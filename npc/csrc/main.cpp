@@ -23,7 +23,7 @@ int main(int argc, char ** argv,char ** env) {
 	int sim_time = 0;
 	while(sim_time <= 20 && !contextp->gotFinish()){ //or ' Verilated::gotFinish() '
 		int a = rand() & 1;
-		int b = rand() & 2;
+		int b = rand() & 1;
 		top->a = a;
 		top->b = b;
 		top->eval();
