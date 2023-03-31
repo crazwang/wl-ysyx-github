@@ -26,5 +26,7 @@ int main(int argc,char **argv, char ** env){
 		//num++;
 		//printf("the num is %d\n",num);
 	}
+	
+	nvboard_quit();
 	return 0;
 }
