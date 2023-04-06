@@ -1,12 +1,12 @@
-MODULE = top
-TOPNAME = top
+MODULE = mux41
+TOPNAME = mux41
 INC_PATH ?=
 
 VERILATOR = verilator
 VERILATOR_CFLAGS += -MMD --build -cc -O3 --x-assign fast --x-initial fast --noassert
 
 BUILD_DIR = ./build
-NXDC_FILES = ./constr/top.nxdc
+NXDC_FILES = ./constr/$(TOPNAME).nxdc
 OBJ_DIR_NVBOARD = $(BUILD_DIR)/obj_dir
 BIN = $(BUILD_DIR)/$(TOPNAME)
 
@@ -28,9 +28,9 @@ run: ./obj_dir/V$(MODULE)
 	
 .PHONY: sim
 sim:
-	$(call git_commit, "sim RTL") # DO NOT REMOVE THIS LINE!!!
+	$(call git_commit, "sim RTL") 
 	@echo " ### Verilator Simulating Begin ###  "
-	verilator -Wall --trace --cc --exe --build csrc/main.cpp vsrc/$(MODULE).v
+	verilator -Wall --trace --cc --exe --build csrc/tb_$(MODULE).cpp vsrc/*.v --top-module $(TOPNAME)
 
 #@echo "Write this Makefile by your self."
 
@@ -47,7 +47,7 @@ $(SRC_AUTO_BIND): $(NXDC_FILES)
 	
 # project source
 VSRCS = $(shell find $(abspath ./vsrc) -name "*.v")
-CSRCS = $(shell find $(abspath ./csrc) -name "*.c" -or -name "*.cc" -or -name "*d.cpp")
+CSRCS = $(shell find $(abspath ./csrc) -name "*.c" -or -name "*.cc" -or -name "$(MODULE)_nvboard.cpp")
 CSRCS += $(SRC_AUTO_BIND)
 
 #rules for NVBoard
@@ -75,5 +75,3 @@ $(shell mkdir -p $(BUILD_DIR))
 run_nvboard: $(BIN)
 	@$^
 
-
-include ../Makefile

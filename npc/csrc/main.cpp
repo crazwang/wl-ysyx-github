@@ -24,6 +24,7 @@ int main(int argc, char ** argv,char ** env) {
 	while(sim_time <= 20 && !contextp->gotFinish()){ //or ' Verilated::gotFinish() '
 		int a = rand() & 1;
 		int b = rand() & 1;
+		printf("%d," ,rand());
 		top->a = a;
 		top->b = b;
 		top->eval();

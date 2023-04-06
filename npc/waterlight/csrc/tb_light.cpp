@@ -36,7 +36,7 @@ int main(int argc , char **argv , char **env){
 	reset(10,light);
 	
 	int sim_time = 0;
-	while(!Verilated::gotFinish() && sim_time <=500){
+	while(!Verilated::gotFinish() && sim_time <=50000){
 		tfp->dump(sim_time);
 		printf("the led[15:0] is : %x ,\n",light->led);
 		single_cycle(light);

@@ -1,5 +1,5 @@
 MODULE = light
-TOPNAME = light
+TOPNAME = $(MODULE)
 INC_PATH ?=
 
 VERILATOR = verilator
@@ -15,20 +15,21 @@ all: ./obj_dir/V$(MODULE)
 	./obj_dir/V$(MODULE)
 
 ./obj_dir/V$(MODULE): sim
+	@echo " ### Simulating end ### "
 
 wave: 
 	@echo " ### use gtkwave to view the waveform ###"
 	gtkwave waveform.vcd
 
 .PHONY:run
-run:
+run: ./obj_dir/V$(MODULE)
 	@echo "### run the file /obj_dir/V$(MODULE) ###"
 	@./obj_dir/V$(MODULE)
 	
 .PHONY: sim
 sim:
 	@echo " ### Verilator Simulating Begin ###  "
-	verilator -Wall --trace --cc --exe --build csrc/main.cpp vsrc/$(MODULE).v
+	verilator -Wall --trace --cc --exe --build csrc/tb_$(MODULE).cpp vsrc/$(MODULE).v --top-module $(TOPNAME)
 
 #@echo "Write this Makefile by your self."
 
@@ -45,7 +46,7 @@ $(SRC_AUTO_BIND): $(NXDC_FILES)
 	
 # project source
 VSRCS = $(shell find $(abspath ./vsrc) -name "*.v")
-CSRCS = $(shell find $(abspath ./csrc) -name "*.c" -or -name "*.cc" -or -name "*d.cpp")
+CSRCS = $(shell find $(abspath ./csrc) -name "*.c" -or -name "*.cc" -or -name "$(MODULE)_nvboard.cpp")
 CSRCS += $(SRC_AUTO_BIND)
 
 #rules for NVBoard
