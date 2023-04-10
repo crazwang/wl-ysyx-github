@@ -1,4 +1,4 @@
-MODULE = encode83
+MODULE = alu
 TOPNAME = $(MODULE)
 INC_PATH ?=
 

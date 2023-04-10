@@ -1,9 +1,10 @@
 #include <stdio.h>
-#include <Vbcd7seg.h>
+#include <stdlib.h>
+#include <Vencode83.h>
 #include <verilated.h>
 #include <verilated_vcd_c.h>
 
-#define Vtop Vbcd7seg
+#define Vtop Vencode83
 
 int main(int argc, char ** argv,char ** env) {
 	//写法1:
@@ -22,18 +23,16 @@ int main(int argc, char ** argv,char ** env) {
 	tfp->open("waveform.vcd");
 
 	int sim_time = 0;
+	int b = 0b00000000;
+
 	while(sim_time <= 20 && !contextp->gotFinish()){ //or ' Verilated::gotFinish() '
-		for(int i = 0;i<4;i++){
-			int a = rand() % 4;
-			top->x[i] = a;
-			printf("x[%d] = %d, ",i,top->x[i]);
-		}
-		int b = rand() % 4;
-		top->y = b;
+
+		top->x = b;
 		top->eval();
-		printf("y = %d, f = %d, time = %d\n", b, top->f,sim_time);
+		printf("x = %o, o_led = %o, time = %d\n", b, top->o_led,sim_time);
 		tfp->dump(sim_time);
 		sim_time++;
+		b++;
 	}
 	
 	top->final();
