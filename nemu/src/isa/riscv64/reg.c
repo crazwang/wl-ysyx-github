@@ -23,7 +23,13 @@ const char *regs[] = {
   "s8", "s9", "s10", "s11", "t3", "t4", "t5", "t6"
 };
 
+paddr_t host_to_guest(uint8_t *haddr);
+
 void isa_reg_display() {
+  printf("Name\tAddr_guest\tAddr_host\t\tValue\n");
+  for(int i = 0;i < 32;i++){
+    printf("%s\t0x%x\t%p\t\t%ld\n",regs[i], host_to_guest(( unsigned char *)&cpu.gpr[i]), &cpu.gpr[i],cpu.gpr[i]);
+  }
 }
 
 word_t isa_reg_str2val(const char *s, bool *success) {

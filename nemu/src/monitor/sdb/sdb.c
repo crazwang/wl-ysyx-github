@@ -18,6 +18,7 @@
 #include <readline/readline.h>
 #include <readline/history.h>
 #include "sdb.h"
+#include <sys/stat.h>
 
 static int is_batch_mode = false;
 
@@ -42,17 +43,106 @@ static char* rl_gets() {
   return line_read;
 }
 
+static int cmd_help(char *args);
+
 static int cmd_c(char *args) {
   cpu_exec(-1);
   return 0;
 }
 
-
 static int cmd_q(char *args) {
   return -1;
 }
 
-static int cmd_help(char *args);
+static int cmd_si(char *args){
+  //int n = atoi(args);
+  //printf("Step number: int :%d ,char : %s \n",n,args);
+  if(args){
+    cpu_exec(atoi(args));
+  }
+  else{
+    cpu_exec(1);
+  }
+  return 0;
+}
+
+static int cmd_info(char *args){
+  if(strcmp(args,"r") == 0){
+    isa_reg_display();
+  }
+  else if (strcmp(args,"w") == 0)
+  {
+    printf("w\n");
+  }
+
+  return 0;
+}
+
+word_t paddr_read(paddr_t addr, int len);
+uint8_t* guest_to_host(paddr_t paddr);
+
+static int cmd_x(char *args){
+  char *num_char = strtok(NULL, " ");
+  int num = atoi(num_char);
+  char *addr_char = num_char + strlen(num_char) + 1;
+  int addr;
+  sscanf(addr_char,"%x",&addr);
+  //printf("num : %d , addr : %s , int :%x\n",num,addr_char,addr);
+  printf("Addr_guest\tAddr_host\t\tValue\n");
+  for(int i=0;i<=num;i++){
+    printf("0x%x\t%p\t\t%08lx\n",addr+4*i,guest_to_host(addr+4*i),paddr_read(addr+4*i,4));
+  }
+  return 0;
+}
+
+static int cmd_p(char *args){
+  bool *suc = NULL;
+  unsigned result = expr(args,suc);
+  printf("expr: %s . result: %u .\n",args,result);
+  return 0;
+}
+
+static int cmd_pfile(char *args){
+  FILE *fp=fopen(args,"r");
+  bool *suc = NULL;
+  int cnt_all = 0;
+  int cnt_right = 0;
+  if(!fp){
+    printf("Can't open file: %s\n" ,args);
+    return 0;
+  }
+  else{
+    //struct stat sb;
+    //stat(args, &sb);
+    //char *express = malloc(sb.st_size);
+    while(!feof(fp)){
+      char express[65536];
+      if(fgets(express,65536,fp)){
+        express[strlen(express) - 1] = '\0';
+        char *result_char = strtok(express, " ");
+        int result_ref = atoi(result_char);
+        char *express_char = result_char + strlen(result_char) + 1;
+        unsigned result = expr(express_char,suc);
+        //printf("expr: %s . result: %u . result_ref: %u \n",express_char,result,result_ref);
+        if(result == result_ref){
+          cnt_all ++;
+          cnt_right++;
+        }
+        else{
+          cnt_all++;
+          //printf("expr: %s , result: %u , result_ref: %u , cnt_all: %d \n",express_char,result,result_ref,cnt_all);
+        }
+      }
+      else{
+        printf("The file evaluation completely done or fgets() wrong.\n");
+      }
+      //sscanf(addr_char,"%x",&addr);
+    }
+    printf("The total accuracy is %.2f%% .\n",(double)cnt_right/cnt_all*100);
+  }
+  fclose(fp);
+  return 0;
+}
 
 static struct {
   const char *name;
@@ -62,6 +152,12 @@ static struct {
   { "help", "Display information about all supported commands", cmd_help },
   { "c", "Continue the execution of the program", cmd_c },
   { "q", "Exit NEMU", cmd_q },
+  { "si", "Step in with the speed of n", cmd_si},
+  { "info", "Print the state of register", cmd_info},
+  { "x", "Scan memory from base to base+n", cmd_x},
+  { "p", "Simple expression evaluation" ,cmd_p},
+  { "pfile", "Evaluate the expression from file." ,cmd_pfile},
+  
 
   /* TODO: Add more commands */
 

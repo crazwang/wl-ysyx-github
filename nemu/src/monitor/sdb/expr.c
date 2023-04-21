@@ -21,7 +21,7 @@
 #include <regex.h>
 
 enum {
-  TK_NOTYPE = 256, TK_EQ,
+  TK_NOTYPE = 256, TK_EQ, NUM,
 
   /* TODO: Add more token types */
 
@@ -39,6 +39,12 @@ static struct rule {
   {" +", TK_NOTYPE},    // spaces
   {"\\+", '+'},         // plus
   {"==", TK_EQ},        // equal
+  {"/", '/'},       // divide
+  {"\\*", '*'},         //muti
+  {"-", '-'},           // minus
+  {"[0-9]+", NUM},    //digit number
+  {"[(]", '('},         //left brace
+  {"[)]", ')'}          //right brace
 };
 
 #define NR_REGEX ARRLEN(rules)
@@ -67,13 +73,15 @@ typedef struct token {
   char str[32];
 } Token;
 
-static Token tokens[32] __attribute__((used)) = {};
+static Token tokens[65536] __attribute__((used)) = {};
 static int nr_token __attribute__((used))  = 0;
 
 static bool make_token(char *e) {
   int position = 0;
   int i;
   regmatch_t pmatch;
+  char *priority_1 = "1";
+  char *priority_2 = "2";
 
   nr_token = 0;
 
@@ -84,8 +92,8 @@ static bool make_token(char *e) {
         char *substr_start = e + position;
         int substr_len = pmatch.rm_eo;
 
-        Log("match rules[%d] = \"%s\" at position %d with len %d: %.*s",
-            i, rules[i].regex, position, substr_len, substr_len, substr_start);
+        //Log("match rules[%d] = \"%s\" at position %d with len %d: %.*s",
+            //i, rules[i].regex, position, substr_len, substr_len, substr_start);
 
         position += substr_len;
 
@@ -95,9 +103,17 @@ static bool make_token(char *e) {
          */
 
         switch (rules[i].token_type) {
-          default: TODO();
+          //case TK_NOTYPE :   ;
+          case TK_EQ     : break;
+          case NUM       : tokens[nr_token].type = rules[i].token_type ; strncpy(tokens[nr_token].str,substr_start,substr_len);tokens[nr_token].str[substr_len] = '\0'; nr_token++; break;
+          case '+'       : tokens[nr_token].type = rules[i].token_type ; strcpy(tokens[nr_token].str,priority_1); nr_token++; break;
+          case '-'       : tokens[nr_token].type = rules[i].token_type ; strcpy(tokens[nr_token].str,priority_1); nr_token++; break;
+          case '*'       : tokens[nr_token].type = rules[i].token_type ; strcpy(tokens[nr_token].str,priority_2); nr_token++; break;
+          case '/'       : tokens[nr_token].type = rules[i].token_type ; strcpy(tokens[nr_token].str,priority_2); nr_token++; break;
+          case '('       : tokens[nr_token].type = rules[i].token_type ; nr_token++; break;
+          case ')'       : tokens[nr_token].type = rules[i].token_type ; nr_token++; break;  
+          default        : break;//TODO();
         }
-
         break;
       }
     }
@@ -106,11 +122,99 @@ static bool make_token(char *e) {
       printf("no match at position %d\n%s\n%*.s^\n", position, e, position, "");
       return false;
     }
+    //printf("tokens[%d].type is : %d ,tokens[%d].str is %s\n",nr_token,tokens[nr_token-1].type, nr_token,tokens[nr_token-1].str);
   }
 
   return true;
 }
 
+int check_legal(int p,int q){
+  int bracepair = 0;
+  int i = p;
+  while(bracepair >= 0 && i <= q){
+    if(tokens[i].type == '('){
+      bracepair++;
+    }
+    else if(tokens[i].type == ')'){
+      bracepair--;
+    }
+    i++;
+  }
+  return bracepair;
+}
+
+bool check_parentheses(int p,int q){
+  if(tokens[p].type == '(' && tokens[q].type == ')'){
+    if(check_legal(p+1,q-1)==0){
+      return true;
+    }
+    else{
+      return false;
+    }
+  }
+  else{
+    return false;
+  }
+}
+
+long int eval(int p, int q) {
+  if (p > q) {
+    /* Bad expression */
+    printf("Bad expression! The index p :%d > index q :%d !\n",p,q);
+    assert(0);
+  }
+  else if (p == q) {
+    /* Single token.
+     * For now this token should be a number.
+     * Return the value of the number.
+     */
+    return strtol(tokens[p].str,NULL,10);
+  }
+  else if (check_parentheses(p, q) == true) {
+    /* The expression is surrounded by a matched pair of parentheses.
+     * If that is the case, just throw away the parentheses.
+     */
+
+    return eval(p + 1, q - 1);
+  }
+  else {
+    //op = the position of 主运算符 in the token expression;
+    int op=0;
+    int bracepair = 0;
+    for (int i=q;i>=p;i--){
+      if(bracepair == 0){
+        switch (tokens[i].type)
+        {
+        case ')': bracepair ++; break;
+        case '+': if(!op){op = i;}else if(strcmp(tokens[op].str,tokens[i].str)>0){op = i;} break;
+        case '-': if(!op){op = i;}else if(strcmp(tokens[op].str,tokens[i].str)>0){op = i;} break;
+        case '/': if(!op){op = i;}else if(strcmp(tokens[op].str,tokens[i].str)>0){op = i;} break;
+        case '*': if(!op){op = i;}else if(strcmp(tokens[op].str,tokens[i].str)>0){op = i;} break;
+        default : break;  
+        }
+      }
+      else{
+        switch (tokens[i].type)
+        {
+        case ')': bracepair ++; break;
+        case '(': bracepair --; break;
+        default : break;
+        }
+      }
+    }
+    //printf("op : %d \n",op);
+    long int val1 = eval(p, op - 1);
+    long int val2 = eval(op + 1, q);
+
+    switch (tokens[op].type) {
+      case '+': return val1 + val2;
+      case '-': return val1 - val2;
+      case '*': return val1 * val2;
+      case '/': return val1 / val2;
+      default: printf("Operation does not exist!\n"); assert(0);
+    }
+  }
+}
 
 word_t expr(char *e, bool *success) {
   if (!make_token(e)) {
@@ -119,7 +223,30 @@ word_t expr(char *e, bool *success) {
   }
 
   /* TODO: Insert codes to evaluate the expression. */
-  TODO();
+  //TODO();
+  int p = 0;
+  int q = nr_token - 1;
 
-  return 0;
+  if(check_legal(p ,q) >0 ){
+    printf("The express is ILLEGAL !\n");
+    printf("'()'don't match . Missing token:')' !\n");
+    printf("The result is set to 0 !\n");
+    return 0;
+  }
+  else if (check_legal(p ,q) >0 )
+  {
+    printf("The express is ILLEGAL !\n");
+    printf("'()'don't match . Missing token:'(' !\n");
+    printf("The result is set to 0 !\n");
+    return 0;
+  }
+  else{
+    //printf ("%ld\n" ,eval(p,q));
+    return eval(p,q);
+  }
+/*   if(result){
+    *success = true;
+  } */
+  //printf("EXPR: %s . RESULT: %u .\n",e,result);
 }
+

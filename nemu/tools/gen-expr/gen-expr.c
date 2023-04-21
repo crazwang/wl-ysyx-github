@@ -26,13 +26,72 @@ static char code_buf[65536 + 128] = {}; // a little larger than `buf`
 static char *code_format =
 "#include <stdio.h>\n"
 "int main() { "
-"  unsigned result = %s; "
+"  long int a = %s; "
+"  unsigned result = (unsigned)a; "
 "  printf(\"%%u\", result); "
 "  return 0; "
 "}";
 
-static void gen_rand_expr() {
-  buf[0] = '\0';
+
+static int count = 0;
+static int retry = 0;
+
+void gen(char c){
+  if(count < sizeof(buf)-1){
+    buf[count] = c;
+    count ++;
+  }
+  else{
+    //printf("The express length is too long ,bigger than size of buf. Try again. \n");
+    count ++;
+  }
+}
+
+static int choose(int n){
+  return rand()%n;
+}
+
+void gen_num(){
+  int a = choose(6)+1;
+  char tmp;
+  if(a == 1){
+    tmp = '0' + rand() % 9;
+    gen(tmp);
+  }
+  else{
+    tmp = '1' + rand() % 9;
+    gen(tmp);
+    for(int i = 1;i<a;i++){
+      tmp = '0' + rand() % 10;
+      gen(tmp);
+    }  
+  }
+}
+
+void gen_rand_op(){
+  switch (choose(4)){
+    case 0 : gen('+'); break;
+    case 1 : gen('-'); break;
+    case 2 : gen('/'); break;
+    default: gen('*'); break;
+  }
+}
+
+void gen_rand_expr() {
+  //buf[0] = '\0';
+  //int tmp = 0;
+  switch (choose(3)) {
+    case 0:   if(count >= sizeof(buf)){break;} else {gen_num(); break;}  
+    case 1:   if(count >= sizeof(buf)){break;} else {gen('('); gen_rand_expr(); gen(')'); break;} 
+    default:  if(count >= sizeof(buf)){break;} else {gen_rand_expr(); gen_rand_op(); gen_rand_expr(); break;}
+  }
+  if(count >= sizeof(buf)){
+    retry = 1;
+  }
+  else{
+    //printf("count is %d ,size of buf = %ld\n" ,count,sizeof(buf));
+    retry = 0;
+  }
 }
 
 int main(int argc, char *argv[]) {
@@ -44,7 +103,15 @@ int main(int argc, char *argv[]) {
   }
   int i;
   for (i = 0; i < loop; i ++) {
-    gen_rand_expr();
+    retry = 1;
+    while(retry){
+      count = 0;
+      gen_rand_expr();
+      buf[count]='\0';
+    }
+    
+    //printf("express count is %d ,  ",count);
+    //printf("buf: %s ,\n" ,buf);
 
     sprintf(code_buf, code_format, buf);
 
@@ -53,17 +120,29 @@ int main(int argc, char *argv[]) {
     fputs(code_buf, fp);
     fclose(fp);
 
-    int ret = system("gcc /tmp/.code.c -o /tmp/.expr");
-    if (ret != 0) continue;
+    int ret = system("gcc /tmp/.code.c -o /tmp/.expr -Werror=overflow -Werror=div-by-zero");
+    if (ret != 0) {
+      //assert(0);
+      //printf("ret: %d, In expr.c line127: overflow wrong.\n\n\n",ret);
+      continue;
+    }
+
 
     fp = popen("/tmp/.expr", "r");
     assert(fp != NULL);
 
     int result;
-    fscanf(fp, "%d", &result);
-    pclose(fp);
-
-    printf("%u %s\n", result, buf);
+    if(fscanf(fp, "%d", &result)!=EOF){
+        pclose(fp);   
+    }
+    else{
+      //assert(0);
+      //printf("In expr.c line137: fscanf() wrong.\n");
+      continue ;
+    }
+    
+    //printf("ret: %d , loop: %d ,RESULT:%u ,EXPR is: %s\n", ret,i,result, buf);
+    printf("%u %s\n",result, buf);
   }
   return 0;
 }

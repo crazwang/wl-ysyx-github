@@ -15,4 +15,12 @@
 
 NAME = gen-expr
 SRCS = gen-expr.c
+loop =100
+
+all:SRCS
+
+run:
+	@./build/gen-expr $(loop) 2>/dev/null |tee ../../input
+
+
 include $(NEMU_HOME)/scripts/build.mk
