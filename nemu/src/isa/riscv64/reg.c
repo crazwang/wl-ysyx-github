@@ -28,10 +28,27 @@ paddr_t host_to_guest(uint8_t *haddr);
 void isa_reg_display() {
   printf("Name\tAddr_guest\tAddr_host\t\tValue\n");
   for(int i = 0;i < 32;i++){
-    printf("%s\t0x%x\t%p\t\t%ld\n",regs[i], host_to_guest(( unsigned char *)&cpu.gpr[i]), &cpu.gpr[i],cpu.gpr[i]);
+    printf("%s\t0x%x\t%p\t\t0x%08lx\n",regs[i], host_to_guest(( unsigned char *)&cpu.gpr[i]), &cpu.gpr[i],cpu.gpr[i]);
   }
 }
 
-word_t isa_reg_str2val(const char *s, bool *success) {
-  return 0;
+word_t isa_reg_str2val(const char *args, bool *success) {
+  if(strcmp(args,"pc") == 0){
+    *success =true;
+    return cpu.pc;
+  }
+  int i = 0;
+  for(i = 0 ;i < 32;i++){
+    if(strcmp(args,regs[i]) == 0) {
+      break;
+    }
+  }
+  if(i == 32){
+    *success = false;
+    return 0;
+  }
+  else{
+    *success = true;
+    return cpu.gpr[i];
+  }
 }

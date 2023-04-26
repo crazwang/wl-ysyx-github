@@ -66,13 +66,37 @@ static int cmd_si(char *args){
   return 0;
 }
 
+void display_wp();
+void single_display_wp(char *args);
+
 static int cmd_info(char *args){
+  if(args == NULL){
+    return 0;
+  }
+
   if(strcmp(args,"r") == 0){
     isa_reg_display();
   }
   else if (strcmp(args,"w") == 0)
   {
-    printf("w\n");
+    display_wp();
+  }
+  else if(args[0] == '$')
+  {
+    char name[32];
+    strcpy(name,args+1);
+    bool *suc = NULL;
+    suc =(bool *)malloc(sizeof(bool));
+    word_t reg_val=isa_reg_str2val(name,suc);
+    if(*suc){
+      printf("The value of register %s is 0x%08lx .\n",args,reg_val);
+    }
+    else{
+      printf("The register %s doesn't exist !\n",args);
+    }
+  }
+  else{
+    single_display_wp(args);
   }
 
   return 0;
@@ -82,10 +106,14 @@ word_t paddr_read(paddr_t addr, int len);
 uint8_t* guest_to_host(paddr_t paddr);
 
 static int cmd_x(char *args){
+  if(args == NULL){
+    return 0;
+  }
+
   char *num_char = strtok(NULL, " ");
   int num = atoi(num_char);
   char *addr_char = num_char + strlen(num_char) + 1;
-  int addr;
+  paddr_t addr;
   sscanf(addr_char,"%x",&addr);
   //printf("num : %d , addr : %s , int :%x\n",num,addr_char,addr);
   printf("Addr_guest\tAddr_host\t\tValue\n");
@@ -96,15 +124,25 @@ static int cmd_x(char *args){
 }
 
 static int cmd_p(char *args){
+  if(args == NULL){
+    return 0;
+  }
+
   bool *suc = NULL;
-  unsigned result = expr(args,suc);
-  printf("expr: %s . result: %u .\n",args,result);
+  suc =(bool *)malloc(sizeof(bool));
+  word_t result = expr(args,suc);
+  printf("expr: %s . result: %lu .\n",args,result);
   return 0;
 }
 
 static int cmd_pfile(char *args){
+  if(args == NULL){
+    return 0;
+  }
+
   FILE *fp=fopen(args,"r");
   bool *suc = NULL;
+  suc =(bool *)malloc(sizeof(bool));
   int cnt_all = 0;
   int cnt_right = 0;
   if(!fp){
@@ -120,9 +158,9 @@ static int cmd_pfile(char *args){
       if(fgets(express,65536,fp)){
         express[strlen(express) - 1] = '\0';
         char *result_char = strtok(express, " ");
-        int result_ref = atoi(result_char);
+        word_t result_ref = atoi(result_char);
         char *express_char = result_char + strlen(result_char) + 1;
-        unsigned result = expr(express_char,suc);
+        word_t result = expr(express_char,suc);
         //printf("expr: %s . result: %u . result_ref: %u \n",express_char,result,result_ref);
         if(result == result_ref){
           cnt_all ++;
@@ -144,6 +182,61 @@ static int cmd_pfile(char *args){
   return 0;
 }
 
+typedef struct watchpoint WP;
+WP* new_wp(char *args);
+
+static int cmd_w(char *args){
+  if(args == NULL){
+    return 0;
+  }
+
+  if(new_wp(args) == NULL){
+    printf("The watchpoint set fail!\n");
+  }
+  return 0;
+}
+
+bool delete_wp(char *args);
+
+static int cmd_d(char *args){
+  if(args == NULL){
+    return 0;
+  }
+
+  if (delete_wp(args)){
+    printf("Delete watchpoint %s successfully !\n" ,args);
+  }
+  return 0;
+}
+
+bool enable_wp(char *args);
+
+static int cmd_enable(char *args){
+  if(args == NULL){
+    return 0;
+  }
+
+  if (enable_wp(args)){
+    printf("The watchpoint %s is set to be enabled !\n",args);
+  }
+
+  return 0;
+}
+
+bool disable_wp(char *args);
+
+static int cmd_disable(char *args){
+  if(args == NULL){
+    return 0;
+  }
+
+  if (disable_wp(args)){
+    printf("The watchpoint %s is set to be disabled !\n",args);
+  }
+
+  return 0;
+}
+
 static struct {
   const char *name;
   const char *description;
@@ -156,7 +249,11 @@ static struct {
   { "info", "Print the state of register", cmd_info},
   { "x", "Scan memory from base to base+n", cmd_x},
   { "p", "Simple expression evaluation" ,cmd_p},
-  { "pfile", "Evaluate the expression from file." ,cmd_pfile},
+  { "pfile", "Evaluate the expression from file" ,cmd_pfile},
+  { "w", "Set a watchpoint" , cmd_w},
+  { "d", "Delete a watchpoint", cmd_d},
+  { "enable", "Enable a watchpoint", cmd_enable},
+  { "disable", "Disable a watchpoint", cmd_disable},
   
 
   /* TODO: Add more commands */
